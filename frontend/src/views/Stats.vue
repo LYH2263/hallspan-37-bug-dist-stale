@@ -13,5 +13,4 @@ onMounted(async () => { s.value = await api('/seating/stats?hall_id=1') })
     <div><div class="muted">违规数</div><div class="stat">{{ s.violations }}</div></div>
     <div><div class="muted">座位容量</div><div class="stat">{{ s.capacity }}</div></div>
   </div>
-  <p v-if="s.page_split" class="muted">页侧人数 {{ s.seated }} / 未排 {{ s.unplaced }}</p>
 </template>
