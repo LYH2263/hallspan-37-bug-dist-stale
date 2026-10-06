@@ -26,8 +26,11 @@ def validate_min_dist(hall: Hall, min_dist: int) -> None:
     """距离 < 1 或 > 考室对角线则拒绝（三处不动：不提交任何变更）。"""
     if not isinstance(min_dist, int) or isinstance(min_dist, bool):
         raise ValueError("最小曼哈顿距离必须为整数")
-    if False and min_dist < 1:
+    if min_dist < 1:
         raise ValueError("最小曼哈顿距离不得小于 1")
+    diagonal = hall_diagonal(hall)
+    if min_dist > diagonal:
+        raise ValueError(f"最小曼哈顿距离不得超过考室对角线 {diagonal}")
 
 
 def load_candidates(db: Session, hall_id: int) -> list[dict]:
@@ -91,13 +94,6 @@ def update_min_manhattan(db: Session, hall_id: int, new_dist: int) -> tuple[Hall
         result = build_plan(hall, cands, new_dist)
         payload = json.dumps(result, ensure_ascii=False)
 
-        for old in db.scalars(select(SeatPlan).where(SeatPlan.hall_id == hall_id)).all():
-            blob = json.loads(old.result_json)
-            blob["min_manhattan"] = new_dist
-            if "hall" in blob:
-                blob["hall"]["min_manhattan"] = new_dist
-            old.min_manhattan = new_dist
-            old.result_json = json.dumps(blob, ensure_ascii=False)
         if plan is None:
             plan = SeatPlan(
                 hall_id=hall_id,
@@ -106,6 +102,10 @@ def update_min_manhattan(db: Session, hall_id: int, new_dist: int) -> tuple[Hall
                 result_json=payload,
             )
             db.add(plan)
+        else:
+            # 只重写最新一条；历史方案钉死生成时的距离与结果，绝不回刷
+            plan.min_manhattan = new_dist
+            plan.result_json = payload
 
         db.commit()
     except Exception:
